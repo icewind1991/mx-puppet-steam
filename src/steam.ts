@@ -22,7 +22,6 @@ interface ISteamPuppet {
 	client: SteamUser;
 	data: any;
 	sentEventIds: string[];
-	typingUsers: { [key: string]: any };
 	knownPersonas: Map<string, IPersona>,
 }
 
@@ -152,13 +151,6 @@ export class Steam {
 	public async handleFriendMessage(puppetId: number, message: IIncomingFriendMessage, fromSteamId?: SteamID) {
 		const p = this.puppets[puppetId];
 		log.verbose("Got message from steam to pass on");
-		const typingKey = message.steamid_friend.toString();
-
-		if (p.typingUsers[typingKey]) {
-			// user is typing, stop that
-			await this.bridge.setUserTyping(p.typingUsers[typingKey], false);
-			delete p.typingUsers[typingKey];
-		}
 
 		await this.bridge.sendMessage(await this.getSendParams(puppetId, message, fromSteamId), {
 			body: message.message,
@@ -166,10 +158,7 @@ export class Steam {
 	}
 
 	public async handleFriendTyping(puppetId: number, message: IIncomingFriendMessage) {
-		const p = this.puppets[puppetId];
-		const typingKey = message.steamid_friend.toString();
-
-		p.typingUsers[typingKey] = {
+		await this.bridge.setUserTyping({
 			room: {
 				puppetId,
 				roomId: message.steamid_friend.toString(),
@@ -178,8 +167,7 @@ export class Steam {
 				puppetId,
 				userId: message.steamid_friend.toString(),
 			},
-		};
-		await this.bridge.setUserTyping(p.typingUsers[typingKey], true);
+		}, true);
 	}
 
 
