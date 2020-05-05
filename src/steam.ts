@@ -97,7 +97,8 @@ export class Steam {
 		try {
 			client.logOn({
 				accountName: data.accountName,
-				loginKey: data.loginKey
+				loginKey: data.loginKey,
+				rememberPassword: true,
 			});
 
 			client.on("user", (steamId, persona) => {
