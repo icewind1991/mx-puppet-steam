@@ -1,0 +1,29 @@
+{
+  "name": "mx-puppet-nextcloud",
+  "version": "0.0.0",
+  "description": "Puppeting bridge for nextcloud talk",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "lint": "tslint --project ./tsconfig.json -t stylish",
+    "start": "npm run-script build && node ./build/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Icewind",
+  "dependencies": {
+    "body-parser": "^1.19.0",
+    "command-line-args": "^5.1.1",
+    "command-line-usage": "^5.0.5",
+    "js-yaml": "^3.13.1",
+    "mx-puppet-bridge": "0.0.40",
+    "steam-user": "4.15.1",
+    "steamcommunity": "3.41.3",
+    "steamid": "1.1.3",
+    "tslint": "^5.20.1",
+    "typescript": "^3.8.3"
+  },
+  "devDependencies": {
+    "@types/node": "^12.12.37",
+    "@types/steamid": "^1.1.0"
+  }
+}

@@ -1,0 +1,6 @@
+node_modules
+build
+.env
+config.yaml
+*-registration.yaml
+database.db
