@@ -1,20 +1,17 @@
-/// <reference path="@types/steam-user/enum.d.ts" />
-/// <reference path="@types/steam-user/interfaces.d.ts" />
-
 import {
-	PuppetBridge,
-	Log,
+	IFileEvent,
+	IMessageEvent,
 	IReceiveParams,
 	IRemoteRoom,
 	IRemoteUser,
-	IMessageEvent,
-	IFileEvent,
-	Util,
-	IRetList,
+	Log,
+	PuppetBridge,
 } from "mx-puppet-bridge";
 import * as SteamUser from "steam-user";
 import * as SteamID from "steamid";
-import {IIncomingFriendMessage, IPersona} from "steam-user-interfaces";
+import {EPersonaState} from "./enum";
+import {MatrixPresence} from "mx-puppet-bridge/lib/src/presencehandler";
+import {AppInfo, IIncomingFriendMessage, IPersona} from "./interfaces";
 
 const log = new Log("MatrixPuppet:Steam");
 
@@ -23,6 +20,7 @@ interface ISteamPuppet {
 	data: any;
 	sentEventIds: string[];
 	knownPersonas: Map<string, IPersona>,
+	knownApps: Map<string, AppInfo>,
 }
 
 interface ISteamPuppets {
@@ -32,6 +30,7 @@ interface ISteamPuppets {
 interface IPuppetParams {
 	accountName: string,
 	loginKey: string,
+
 	[key: string]: string;
 }
 
@@ -46,7 +45,7 @@ export class Steam {
 
 	async getPersona(p: ISteamPuppet, steamid: SteamID): Promise<IPersona> {
 		let steamIdString = steamid.toString();
-		let persona = p.knownPersonas.get(steamIdString)
+		let persona = p.knownPersonas.get(steamIdString);
 		if (persona) {
 			return persona;
 		} else if (p.client.users[steamIdString]) {
@@ -56,6 +55,18 @@ export class Steam {
 			let persona = personas[steamIdString];
 			p.knownPersonas.set(steamIdString, persona);
 			return persona;
+		}
+	}
+
+	async getProduct(p: ISteamPuppet, appId: string): Promise<AppInfo> {
+		let app = p.knownApps.get(appId);
+		if (app) {
+			return app;
+		} else {
+			let {apps} = await p.client.getProductInfo([parseInt(appId, 10)], []);
+			let app = apps[appId];
+			p.knownApps.set(appId, app);
+			return app;
 		}
 	}
 
@@ -93,6 +104,7 @@ export class Steam {
 			sentEventIds: [],
 			typingUsers: {},
 			knownPersonas: new Map(),
+			knownApps: new Map(),
 		} as ISteamPuppet;
 		try {
 			client.logOn({
@@ -101,18 +113,57 @@ export class Steam {
 				rememberPassword: true,
 			});
 
-			client.on("user", (steamId, persona) => {
-				this.puppets[puppetId].knownPersonas.set(steamId.toString(), persona);
+			client.on("user", async (steamId, persona: IPersona) => {
+				const p = this.puppets[puppetId];
+				p.knownPersonas.set(steamId.toString(), persona);
+
+				let state: MatrixPresence = "offline";
+
+				switch (persona.persona_state) {
+					case EPersonaState.Away:
+					case EPersonaState.Busy:
+					case EPersonaState.Snooze:
+						state = "unavailable";
+						break;
+					case EPersonaState.LookingToPlay:
+					case EPersonaState.LookingToTrade:
+					case EPersonaState.Online:
+						state = "online";
+						break;
+				}
+
+				if (steamId.toString() != client.steamID.toString()) {
+
+					await this.bridge.setUserPresence({
+						puppetId,
+						userId: steamId.toString()
+					}, state);
+
+					if (persona.gameid && persona.gameid !== '0') {
+						let app = await this.getProduct(p, persona.gameid);
+						await this.bridge.setUserStatus({
+							puppetId,
+							userId: steamId.toString()
+						}, `Now playing: ${app.appinfo.common.name}`);
+					} else {
+						await this.bridge.setUserStatus({
+							puppetId,
+							userId: steamId.toString()
+						}, "");
+					}
+				}
 			});
 
 			client.on("loggedOn", async (details) => {
 				await this.bridge.setUserId(puppetId, client.steamID.toString());
 
 				await this.bridge.sendStatusMessage(puppetId, `connected as ${details.vanity_url}(${client.steamID.toString()})!`);
-			})
+
+				client.setPersona(EPersonaState.Away);
+			});
 
 			client.on("loginKey", (loginKey) => {
-				console.log("got new login key");
+				log.info("got new login key");
 				data.loginKey = loginKey;
 				this.bridge.setPuppetData(puppetId, data);
 			});
@@ -125,7 +176,7 @@ export class Steam {
 			});
 			client.chat.on("friendTyping", (message: IIncomingFriendMessage) => {
 				this.handleFriendTyping(puppetId, message);
-			})
+			});
 
 			client.on("error", (err) => {
 				log.error(`Failed to start up puppet ${puppetId}`, err);
@@ -171,7 +222,6 @@ export class Steam {
 		}, true);
 	}
 
-
 	public async sendMessageToSteam(
 		p: ISteamPuppet,
 		room: IRemoteRoom,
@@ -179,22 +229,20 @@ export class Steam {
 		msg: string,
 		mediaId?: string,
 	) {
-		let id = "";
-
 		try {
-			let _roomSteamId = new SteamID(room.name as string);
+			let _roomSteamId = new SteamID(room.roomId as string);
 			if (_roomSteamId.isValid()) {
 				const sendMessage = await p.client.chat.sendFriendMessage(room.roomId, msg);
-				id = `${sendMessage.server_timestamp.toISOString()}::${sendMessage.ordinal}`;
+				let id = `${sendMessage.server_timestamp.toISOString()}::${sendMessage.ordinal}`;
+
+				await this.bridge.eventSync.insert(room, eventId, id);
+				p.sentEventIds.push(id);
 			} else {
 				await this.bridge.sendStatusMessage(room.puppetId, `Sending group messages is currently not supported`);
 			}
 		} catch (e) {
 			await this.bridge.sendStatusMessage(room.puppetId, `Sending group messages is currently not supported`);
 		}
-
-		await this.bridge.eventSync.insert(room, eventId, id);
-		p.sentEventIds.push(id);
 	}
 
 	public async handleMatrixMessage(room: IRemoteRoom, data: IMessageEvent, event: any) {
@@ -228,11 +276,15 @@ export class Steam {
 		if (!p) {
 			return null;
 		}
+
+		let persona = await this.getPersona(p, new SteamID(user.userId));
+
 		log.info(`Got request to create user ${user.userId}`);
 		return {
 			userId: user.userId,
 			puppetId: user.puppetId,
-			name: user.name,
+			name: persona.player_name,
+			avatarUrl: persona.avatar_url_medium
 		};
 	}
 

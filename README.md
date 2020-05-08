@@ -4,8 +4,12 @@ Matrix <-> Steam puppeting bridge based on [mx-puppet-bridge](https://github.com
 
 ## Status
 
-The bridge is in early status, logging in and 1<->1 messages are mostly working.
-Group messages are not working, typing status works somewhat.
+- [x] login with steam guard support
+- [x] 1 <->1 messaging
+- [ ] group messaging
+- [x] steam -> matrix typing notifications
+- [x] online/offline status
+- [x] retrieve nickname and avatar from steam
 
 ## Linking
 
@@ -15,4 +19,4 @@ Start a chat with @_steampuppet_bot:yourserver.com
 link <username> <password>
 ```
 
-If a steam guard (mobile or email) code is required you will be asked for the code.
+If a steam guard (mobile or email) code is required, you will be asked for the code.

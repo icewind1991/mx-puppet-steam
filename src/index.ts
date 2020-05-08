@@ -7,15 +7,11 @@ import {
 } from "mx-puppet-bridge";
 import * as commandLineArgs from "command-line-args";
 import * as commandLineUsage from "command-line-usage";
-import * as escapeHtml from "escape-html";
 import {Steam} from "./steam";
 import {NextcloudConfigWrap} from "./config";
 import * as fs from "fs";
 import * as yaml from "js-yaml";
-import {GetDataFromStrHook, IPuppetData} from "mx-puppet-bridge/lib/src";
-import * as SteamCommunity from 'steamcommunity';
 import {LoginDetails, LoginToken} from "./login";
-import * as SteamID from "steamid";
 import * as SteamUser from "steam-user";
 
 const log = new Log("NextcloudPuppet:index");
@@ -49,7 +45,7 @@ if (options.help) {
 }
 
 const protocol = {
-	features: {typingTimeout : 1 * 1000},
+	features: {typingTimeout : 1000, presence: true},
 	id: "steam",
 	displayname: "Steam",
 	externalUrl: "https://steamcommunity.com/",

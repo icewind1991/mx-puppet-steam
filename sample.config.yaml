@@ -22,3 +22,10 @@ provisioning:
   #sharedSecret: random string
   # Path prefix for the provisioning API. /v1 will be appended to the prefix automatically.
   apiPrefix: /_matrix/provision
+
+presence:
+  # Bridge Steam online/offline status
+  enabled: true
+
+  # How often to send status to the homeserver in milliseconds
+  interval: 5000
