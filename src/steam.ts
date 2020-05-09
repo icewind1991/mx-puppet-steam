@@ -290,12 +290,49 @@ export class Steam {
 	}
 
 	public async listUsers(puppetId: number): Promise<IRetList[]> {
-		let friends = this.puppets[puppetId].client.users as {[steamId: string]: IPersona};
+		let friends = this.puppets[puppetId].client.users as { [steamId: string]: IPersona };
 
 		return Object.keys(friends).map((steamId) => ({
 			id: steamId,
 			name: friends[steamId].player_name
 		}));
+	}
+
+	public async getDmRoomId(user: IRemoteUser): Promise<string | null> {
+		log.info(`Got request for dm room id for ${user.userId}`);
+
+		if (!this.puppets[user.puppetId]) {
+			return null;
+		}
+
+		return user.userId;
+	}
+
+	public async createRoom(room: IRemoteRoom): Promise<IRemoteRoom | null> {
+		const p = this.puppets[room.puppetId];
+		if (!p) {
+			return null;
+		}
+
+		try {
+			let steamId = new SteamID(room.roomId);
+			if (!steamId.isValid()) {
+				throw new Error();
+			}
+
+			let persona = await this.getPersona(p, steamId);
+
+			log.info(`Got request to room user ${room.roomId}`);
+			return {
+				puppetId: room.puppetId,
+				roomId: room.roomId,
+				isDirect: true,
+				topic: persona.player_name
+			};
+		} catch (e) {
+			await this.bridge.sendStatusMessage(room.puppetId, `Creating group room chats is currently not supported`);
+			return null;
+		}
 	}
 
 	// public async getUserIdsInRoom(room: IRemoteRoom): Promise<Set<string> | null> {
