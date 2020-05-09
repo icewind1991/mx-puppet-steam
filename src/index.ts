@@ -45,7 +45,7 @@ if (options.help) {
 }
 
 const protocol = {
-	features: {typingTimeout : 1000, presence: true},
+	features: {typingTimeout : 1000, presence: true, image: true},
 	id: "steam",
 	displayname: "Steam",
 	externalUrl: "https://steamcommunity.com/",
@@ -88,7 +88,6 @@ async function run() {
 	puppet.on("puppetDelete", steam.deletePuppet.bind(steam));
 	puppet.on("message", steam.handleMatrixMessage.bind(steam));
 	puppet.on("image", steam.handleMatrixImage.bind(steam));
-	puppet.on("video", steam.handleMatrixVideo.bind(steam));
 	puppet.setCreateUserHook(steam.createUser.bind(steam));
 	// puppet.setGetUserIdsInRoomHook(steam.getUserIdsInRoom.bind(steam));
 	puppet.setListUsersHook(steam.listUsers.bind(steam));

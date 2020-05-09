@@ -6,8 +6,10 @@ import {
 	IRemoteUser,
 	Log,
 	PuppetBridge,
+	Util,
 } from "mx-puppet-bridge";
 import * as SteamUser from "steam-user";
+import * as SteamCommunity from "steamcommunity";
 import * as SteamID from "steamid";
 import {EPersonaState} from "./enum";
 import {MatrixPresence} from "mx-puppet-bridge/lib/src/presencehandler";
@@ -18,10 +20,12 @@ const log = new Log("MatrixPuppet:Steam");
 
 interface ISteamPuppet {
 	client: SteamUser;
+	community: SteamCommunity;
 	data: any;
 	sentEventIds: string[];
 	knownPersonas: Map<string, IPersona>,
 	knownApps: Map<string, AppInfo>,
+	ourSendImages: string[]
 }
 
 interface ISteamPuppets {
@@ -98,14 +102,17 @@ export class Steam {
 			await this.deletePuppet(puppetId);
 		}
 		const client = new SteamUser();
+		const community = new SteamCommunity();
 
 		this.puppets[puppetId] = {
 			client,
+			community,
 			data,
 			sentEventIds: [],
 			typingUsers: {},
 			knownPersonas: new Map(),
 			knownApps: new Map(),
+			ourSendImages: [],
 		} as ISteamPuppet;
 		try {
 			client.logOn({
@@ -163,6 +170,10 @@ export class Steam {
 				client.setPersona(EPersonaState.Away);
 			});
 
+			client.on("webSession", async (sessionId, cookies) => {
+				community.setCookies(cookies);
+			});
+
 			client.on("loginKey", (loginKey) => {
 				log.info("got new login key");
 				data.loginKey = loginKey;
@@ -201,6 +212,19 @@ export class Steam {
 		delete this.bridge[puppetId];
 	}
 
+	private getRoomSteamId(room: IRemoteRoom): SteamID | null {
+		try {
+			const steamId = new SteamID(room.roomId);
+			if (steamId.isValid()) {
+				return steamId;
+			} else {
+				return null;
+			}
+		} catch (e) {
+			return null;
+		}
+	}
+
 	public async handleFriendMessage(puppetId: number, message: IIncomingFriendMessage, fromSteamId?: SteamID) {
 		const p = this.puppets[puppetId];
 		log.verbose("Got message from steam to pass on");
@@ -213,7 +237,14 @@ export class Steam {
 			&& message.message_bbcode_parsed[0].tag === 'img'
 			&& message.message_no_bbcode === message.message_bbcode_parsed[0].attrs['src']
 		) {
-			await this.bridge.sendImage(sendParams, message.message_bbcode_parsed[0].attrs['src']);
+			const url = message.message_bbcode_parsed[0].attrs['src'];
+			let i = p.ourSendImages.indexOf(url);
+			if (i === -1) {
+				await this.bridge.sendImage(sendParams, url);
+			} else {
+				// image came from us, dont send
+				p.ourSendImages.splice(i);
+			}
 		} else {
 			await this.bridge.sendMessage(sendParams, {
 				body: message.message_no_bbcode,
@@ -241,18 +272,13 @@ export class Steam {
 		msg: string,
 		mediaId?: string,
 	) {
-		try {
-			let _roomSteamId = new SteamID(room.roomId as string);
-			if (_roomSteamId.isValid()) {
-				const sendMessage = await p.client.chat.sendFriendMessage(room.roomId, msg);
-				let id = `${sendMessage.server_timestamp.toISOString()}::${sendMessage.ordinal}`;
+		if (this.getRoomSteamId(room)) {
+			const sendMessage = await p.client.chat.sendFriendMessage(room.roomId, msg);
+			let id = `${sendMessage.server_timestamp.toISOString()}::${sendMessage.ordinal}`;
 
-				await this.bridge.eventSync.insert(room, eventId, id);
-				p.sentEventIds.push(id);
-			} else {
-				await this.bridge.sendStatusMessage(room.puppetId, `Sending group messages is currently not supported`);
-			}
-		} catch (e) {
+			await this.bridge.eventSync.insert(room, eventId, id);
+			p.sentEventIds.push(id);
+		} else {
 			await this.bridge.sendStatusMessage(room.puppetId, `Sending group messages is currently not supported`);
 		}
 	}
@@ -273,14 +299,23 @@ export class Steam {
 			return;
 		}
 		log.verbose("Got image to send on");
-	}
 
-	public async handleMatrixVideo(room: IRemoteRoom, data: IFileEvent, event: any) {
-		const p = this.puppets[room.puppetId];
-		if (!p) {
-			return;
+		let steamId = this.getRoomSteamId(room);
+		if (steamId) {
+			const buffer = await Util.DownloadFile(data.url);
+			let sendUrl: string = await new Promise((resolve, reject) => p.community.sendImageToUser(steamId, buffer, (err, imageUrl) => {
+				if (err) {
+					reject(err);
+				} else {
+					resolve(imageUrl);
+				}
+			}));
+			// since we send images trough SteamCommunity and not SteamUser we get them back as `friendMessageEcho`
+			// so we need to track them to make sure we dont double post them
+			p.ourSendImages.push(sendUrl);
+		} else {
+			await this.bridge.sendStatusMessage(room.puppetId, `Sending images to groups is currently not supported`);
 		}
-		log.verbose("Got video to send on");
 	}
 
 	public async createUser(user: IRemoteUser): Promise<IRemoteUser | null> {
@@ -325,12 +360,8 @@ export class Steam {
 			return null;
 		}
 
-		try {
-			let steamId = new SteamID(room.roomId);
-			if (!steamId.isValid()) {
-				throw new Error();
-			}
-
+		let steamId = this.getRoomSteamId(room);
+		if (steamId) {
 			let persona = await this.getPersona(p, steamId);
 
 			log.info(`Got request to room user ${room.roomId}`);
@@ -340,7 +371,7 @@ export class Steam {
 				isDirect: true,
 				topic: persona.player_name
 			};
-		} catch (e) {
+		} else {
 			await this.bridge.sendStatusMessage(room.puppetId, `Creating group room chats is currently not supported`);
 			return null;
 		}

@@ -16,6 +16,7 @@
     "js-yaml": "^3.13.1",
     "mx-puppet-bridge": "0.0.43",
     "steam-user": "4.15.1",
+    "steamcommunity": "3.41.3",
     "steamid": "1.1.3",
     "typescript": "^3.8.3"
   },
