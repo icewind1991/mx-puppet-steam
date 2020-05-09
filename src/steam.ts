@@ -205,9 +205,20 @@ export class Steam {
 		const p = this.puppets[puppetId];
 		log.verbose("Got message from steam to pass on");
 
-		await this.bridge.sendMessage(await this.getSendParams(puppetId, message, fromSteamId), {
-			body: message.message,
-		});
+		let sendParams = await this.getSendParams(puppetId, message, fromSteamId);
+
+		// message is only an embedded image
+		if (
+			message.message_bbcode_parsed.length === 1
+			&& message.message_bbcode_parsed[0].tag === 'img'
+			&& message.message_no_bbcode === message.message_bbcode_parsed[0].attrs['src']
+		) {
+			await this.bridge.sendImage(sendParams, message.message_bbcode_parsed[0].attrs['src']);
+		} else {
+			await this.bridge.sendMessage(sendParams, {
+				body: message.message_no_bbcode,
+			});
+		}
 	}
 
 	public async handleFriendTyping(puppetId: number, message: IIncomingFriendMessage) {

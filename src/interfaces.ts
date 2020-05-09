@@ -11,6 +11,13 @@ export interface IIncomingFriendMessage {
 	ordinal: number,
 	local_echo: boolean,
 	low_priority: boolean
+	message_bbcode_parsed: BBCodeNode[]
+}
+
+export interface BBCodeNode {
+	tag: string
+	attrs: { [attr: string]: string },
+	content: BBCodeNode[]
 }
 
 export interface IIncomingChatMessage {
