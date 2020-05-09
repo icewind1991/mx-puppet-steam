@@ -10,6 +10,8 @@ Matrix <-> Steam puppeting bridge based on [mx-puppet-bridge](https://github.com
 - [x] steam -> matrix typing notifications
 - [x] online/offline status
 - [x] retrieve nickname and avatar from steam
+- [x] listing of steam users
+- [ ] listing of steam group chats
 
 ## Linking
 

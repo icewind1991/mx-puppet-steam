@@ -12,6 +12,7 @@ import * as SteamID from "steamid";
 import {EPersonaState} from "./enum";
 import {MatrixPresence} from "mx-puppet-bridge/lib/src/presencehandler";
 import {AppInfo, IIncomingFriendMessage, IPersona} from "./interfaces";
+import {IRetList} from "mx-puppet-bridge/src/interfaces";
 
 const log = new Log("MatrixPuppet:Steam");
 
@@ -286,6 +287,15 @@ export class Steam {
 			name: persona.player_name,
 			avatarUrl: persona.avatar_url_medium
 		};
+	}
+
+	public async listUsers(puppetId: number): Promise<IRetList[]> {
+		let friends = this.puppets[puppetId].client.users as {[steamId: string]: IPersona};
+
+		return Object.keys(friends).map((steamId) => ({
+			id: steamId,
+			name: friends[steamId].player_name
+		}));
 	}
 
 	// public async getUserIdsInRoom(room: IRemoteRoom): Promise<Set<string> | null> {

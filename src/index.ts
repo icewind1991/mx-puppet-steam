@@ -91,6 +91,7 @@ async function run() {
 	puppet.on("video", steam.handleMatrixVideo.bind(steam));
 	puppet.setCreateUserHook(steam.createUser.bind(steam));
 	// puppet.setGetUserIdsInRoomHook(steam.getUserIdsInRoom.bind(steam));
+	puppet.setListUsersHook(steam.listUsers.bind(steam));
 	puppet.setGetDescHook(async (puppetId: number, data: any): Promise<string> => {
 		let s = "Steam";
 		if (data.screenName) {
