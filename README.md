@@ -12,6 +12,7 @@ Matrix <-> Steam puppeting bridge based on [mx-puppet-bridge](https://github.com
 - [x] retrieve nickname and avatar from steam
 - [x] listing of steam users
 - [ ] listing of steam group chats
+- [ ] listing of members within group chat
 - [x] bridging embedded images in 1<->1 chats
 - [x] receiving embedded images from steam in group chats
 - [ ] sending embedded images to steam in group chats
