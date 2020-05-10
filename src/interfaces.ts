@@ -99,3 +99,42 @@ export interface IGroupInfo {
 		chat_name: string,
 	}[]
 }
+
+export interface IGroupDetails {
+	group_summary: {
+		chat_rooms: {
+			members_in_voice: SteamId[],
+			chat_id: string,
+			chat_name: string,
+			voice_allowed: boolean,
+			time_last_message: Date,
+			sort_order: null,
+			last_message: string,
+			steamid_last_message: SteamId
+		}[],
+		top_members: SteamId[],
+		role_ids: any[],
+		role_actions: any[],
+		party_beacons: [],
+		chat_group_id: string,
+		chat_group_name: string,
+		active_member_count: number,
+		active_voice_member_count: number,
+		default_chat_id: string,
+		chat_group_tagline: string,
+		chat_group_avatar_sha: Buffer,
+		rank: number,
+		default_role_id: string,
+		steamid_owner: SteamId,
+		chat_group_avatar_url?: string,
+	},
+	group_state: {
+		user_chat_room_state: any[],
+		chat_group_id: string,
+		time_joined: Date,
+		desktop_notification_level: number,
+		mobile_notification_level: number,
+		time_last_group_ack: Date,
+		unread_indicator_muted: boolean
+	}
+}

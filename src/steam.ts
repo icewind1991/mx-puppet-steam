@@ -13,7 +13,15 @@ import * as SteamCommunity from "steamcommunity";
 import * as SteamID from "steamid";
 import {EPersonaState} from "./enum";
 import {MatrixPresence} from "mx-puppet-bridge/lib/src/presencehandler";
-import {AppInfo, IGroupInfo, IIncomingChatMessage, IIncomingFriendMessage, IPersona, isBBCode} from "./interfaces";
+import {
+	AppInfo,
+	IGroupDetails,
+	IGroupInfo,
+	IIncomingChatMessage,
+	IIncomingFriendMessage,
+	IPersona,
+	isBBCode
+} from "./interfaces";
 import {IRetList} from "mx-puppet-bridge/src/interfaces";
 import {IRemoteGroup} from "mx-puppet-bridge/lib/src";
 
@@ -27,12 +35,6 @@ interface ISteamPuppet {
 	knownPersonas: Map<string, IPersona>,
 	knownApps: Map<string, AppInfo>,
 	ourSendImages: string[],
-	knownChats: Map<string, {
-		chat_group_id: string,
-		chat_id: string,
-		chat_name: string
-	}>,
-	knownGroupNames: Map<string, string>,
 }
 
 interface ISteamPuppets {
@@ -151,8 +153,6 @@ export class Steam {
 			knownPersonas: new Map(),
 			knownApps: new Map(),
 			ourSendImages: [],
-			knownChats: new Map(),
-			knownGroupNames: new Map(),
 		} as ISteamPuppet;
 		try {
 			client.logOn({
@@ -281,19 +281,6 @@ export class Steam {
 		const p = this.puppets[puppetId];
 		log.verbose("Got chat message from steam to pass on");
 
-		if (!p.knownChats.has(message.chat_id)) {
-			p.knownChats.set(message.chat_id, {
-				chat_id: message.chat_id,
-				chat_group_id: message.chat_group_id,
-				chat_name: message.chat_name
-			});
-		}
-
-		if (!p.knownGroupNames.has(message.chat_group_id)) {
-			let parts = message.chat_name.split('|');
-			p.knownGroupNames.set(message.chat_group_id, parts[0].trim());
-		}
-
 		let sendParams = await this.getChatMessageSendParams(puppetId, message, fromSteamId);
 
 		await this.sendMessage(p, sendParams, message);
@@ -400,7 +387,6 @@ export class Steam {
 		if (!p) {
 			return null;
 		}
-
 		let persona = await this.getPersona(p, new SteamID(user.userId));
 
 		log.info(`Got request to create user ${user.userId}`);
@@ -450,14 +436,21 @@ export class Steam {
 			};
 		} else {
 			let [groupId, chatId] = this.parseChatRoomId(room.roomId);
-			let chatRoom = p.knownChats.get(chatId);
-			if (chatRoom) {
+			let chat_room_group = await this.getGroupInfo(p, groupId);
+			if (chat_room_group) {
+				let chat_room = chat_room_group.group_summary.chat_rooms.find((chat) => chat.chat_id == chatId);
+				let name = chat_room_group.group_summary.chat_group_name;
+				if (chat_room) {
+					name = `${name} | ${chat_room.chat_name}`;
+				}
+
 				return {
 					puppetId: room.puppetId,
-					roomId: `chat_${chatRoom.chat_group_id}_${chatRoom.chat_id}`,
+					roomId: `chat_${groupId}_${chatId}`,
 					isDirect: false,
-					groupId: chatRoom.chat_group_id,
-					name: chatRoom.chat_name,
+					groupId: groupId,
+					name,
+					avatarUrl: chat_room_group.group_summary.chat_group_avatar_url,
 				};
 			}
 		}
@@ -466,16 +459,40 @@ export class Steam {
 		return null;
 	}
 
-	public async createGroup(room: IRemoteGroup): Promise<IRemoteGroup | null> {
-		const p = this.puppets[room.puppetId];
+	public async getGroupInfo(puppet: ISteamPuppet, groupId: string): Promise<IGroupDetails | null> {
+		let {chat_room_groups} = await new Promise((resolve, reject) => puppet.client.chat.getGroups((err, response) => {
+			if (err) {
+				reject(err);
+			} else {
+				resolve(response);
+			}
+		}));
+
+		let chat_room_group = chat_room_groups[groupId];
+		if (chat_room_group) {
+			return chat_room_group as IGroupDetails;
+		} else {
+			return null;
+		}
+	}
+
+	public async createGroup(group: IRemoteGroup): Promise<IRemoteGroup | null> {
+		const p = this.puppets[group.puppetId];
 		if (!p) {
 			return null;
 		}
 
-		return {
-			puppetId: room.puppetId,
-			groupId: room.groupId,
-			name: p.knownGroupNames.get(room.groupId),
+		let chat_room_group = await this.getGroupInfo(p, group.groupId);
+
+		if (!chat_room_group) {
+			return null;
 		}
+
+		return {
+			puppetId: group.puppetId,
+			groupId: group.groupId,
+			name: chat_room_group.group_summary.chat_group_name,
+			avatarUrl: chat_room_group.group_summary.chat_group_avatar_url,
+		};
 	}
 }
