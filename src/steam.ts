@@ -13,8 +13,9 @@ import * as SteamCommunity from "steamcommunity";
 import * as SteamID from "steamid";
 import {EPersonaState} from "./enum";
 import {MatrixPresence} from "mx-puppet-bridge/lib/src/presencehandler";
-import {AppInfo, IIncomingFriendMessage, IPersona} from "./interfaces";
+import {AppInfo, IGroupInfo, IIncomingChatMessage, IIncomingFriendMessage, IPersona, isBBCode} from "./interfaces";
 import {IRetList} from "mx-puppet-bridge/src/interfaces";
+import {IRemoteGroup} from "mx-puppet-bridge/lib/src";
 
 const log = new Log("MatrixPuppet:Steam");
 
@@ -25,7 +26,13 @@ interface ISteamPuppet {
 	sentEventIds: string[];
 	knownPersonas: Map<string, IPersona>,
 	knownApps: Map<string, AppInfo>,
-	ourSendImages: string[]
+	ourSendImages: string[],
+	knownChats: Map<string, {
+		chat_group_id: string,
+		chat_id: string,
+		chat_name: string
+	}>,
+	knownGroupNames: Map<string, string>,
 }
 
 interface ISteamPuppets {
@@ -75,7 +82,7 @@ export class Steam {
 		}
 	}
 
-	public async getSendParams(puppetId: number, msg: IIncomingFriendMessage, fromSteamId?: SteamID): Promise<IReceiveParams> {
+	public async getFriendMessageSendParams(puppetId: number, msg: IIncomingFriendMessage, fromSteamId?: SteamID): Promise<IReceiveParams> {
 		const p = this.puppets[puppetId];
 
 		let persona = await this.getPersona(p, fromSteamId ? fromSteamId : msg.steamid_friend);
@@ -96,6 +103,37 @@ export class Steam {
 		} as IReceiveParams;
 	}
 
+	public async getChatMessageSendParams(puppetId: number, msg: IIncomingChatMessage, fromSteamId?: SteamID): Promise<IReceiveParams> {
+		const p = this.puppets[puppetId];
+
+		let persona = await this.getPersona(p, fromSteamId ? fromSteamId : msg.steamid_sender);
+
+		return {
+			room: {
+				puppetId,
+				roomId: `chat_${msg.chat_group_id}_${msg.chat_id}`,
+				isDirect: false,
+				name: msg.chat_name,
+			},
+			user: {
+				puppetId,
+				userId: fromSteamId ? fromSteamId.toString() : msg.steamid_sender.toString(),
+				name: persona.player_name,
+				avatarUrl: persona.avatar_url_medium
+			},
+			eventId: `${msg.server_timestamp.toISOString()}::${msg.ordinal}`,
+		} as IReceiveParams;
+	}
+
+	public parseChatRoomId(roomId: string): [string, string] {
+		let matches = roomId.match(/chat_(\d+)_(\d+)/);
+		if (matches) {
+			return [matches[1], matches[2]];
+		} else {
+			throw new Error("invalid chatroom id");
+		}
+	}
+
 	public async newPuppet(puppetId: number, data: IPuppetParams) {
 		log.info(`Adding new Puppet: puppetId=${puppetId}`);
 		if (this.puppets[puppetId]) {
@@ -113,6 +151,8 @@ export class Steam {
 			knownPersonas: new Map(),
 			knownApps: new Map(),
 			ourSendImages: [],
+			knownChats: new Map(),
+			knownGroupNames: new Map(),
 		} as ISteamPuppet;
 		try {
 			client.logOn({
@@ -189,6 +229,9 @@ export class Steam {
 			client.chat.on("friendTyping", (message: IIncomingFriendMessage) => {
 				this.handleFriendTyping(puppetId, message);
 			});
+			client.chat.on("chatMessage", (message) => {
+				this.handleChatMessage(puppetId, message);
+			});
 
 			client.on("error", (err) => {
 				log.error(`Failed to start up puppet ${puppetId}`, err);
@@ -227,23 +270,51 @@ export class Steam {
 
 	public async handleFriendMessage(puppetId: number, message: IIncomingFriendMessage, fromSteamId?: SteamID) {
 		const p = this.puppets[puppetId];
-		log.verbose("Got message from steam to pass on");
+		log.verbose("Got friend message from steam to pass on");
 
-		let sendParams = await this.getSendParams(puppetId, message, fromSteamId);
+		let sendParams = await this.getFriendMessageSendParams(puppetId, message, fromSteamId);
 
+		await this.sendMessage(p, sendParams, message);
+	}
+
+	public async handleChatMessage(puppetId: number, message: IIncomingChatMessage, fromSteamId?: SteamID) {
+		const p = this.puppets[puppetId];
+		log.verbose("Got chat message from steam to pass on");
+
+		if (!p.knownChats.has(message.chat_id)) {
+			p.knownChats.set(message.chat_id, {
+				chat_id: message.chat_id,
+				chat_group_id: message.chat_group_id,
+				chat_name: message.chat_name
+			});
+		}
+
+		if (!p.knownGroupNames.has(message.chat_group_id)) {
+			let parts = message.chat_name.split('|');
+			p.knownGroupNames.set(message.chat_group_id, parts[0].trim());
+		}
+
+		let sendParams = await this.getChatMessageSendParams(puppetId, message, fromSteamId);
+
+		await this.sendMessage(p, sendParams, message);
+	}
+
+	public async sendMessage(puppet: ISteamPuppet, sendParams: IReceiveParams, message: IIncomingFriendMessage | IIncomingChatMessage) {
 		// message is only an embedded image
 		if (
-			message.message_bbcode_parsed.length === 1
+			message.message_bbcode_parsed
+			&& message.message_bbcode_parsed.length === 1
+			&& isBBCode(message.message_bbcode_parsed[0])
 			&& message.message_bbcode_parsed[0].tag === 'img'
 			&& message.message_no_bbcode === message.message_bbcode_parsed[0].attrs['src']
 		) {
 			const url = message.message_bbcode_parsed[0].attrs['src'];
-			let i = p.ourSendImages.indexOf(url);
+			let i = puppet.ourSendImages.indexOf(url);
 			if (i === -1) {
 				await this.bridge.sendImage(sendParams, url);
 			} else {
 				// image came from us, dont send
-				p.ourSendImages.splice(i);
+				puppet.ourSendImages.splice(i);
 			}
 		} else {
 			await this.bridge.sendMessage(sendParams, {
@@ -279,7 +350,13 @@ export class Steam {
 			await this.bridge.eventSync.insert(room, eventId, id);
 			p.sentEventIds.push(id);
 		} else {
-			await this.bridge.sendStatusMessage(room.puppetId, `Sending group messages is currently not supported`);
+			let [groupId, chatId] = this.parseChatRoomId(room.roomId);
+
+			const sendMessage = await p.client.chat.sendChatMessage(groupId, chatId, msg);
+			let id = `${sendMessage.server_timestamp.toISOString()}::${sendMessage.ordinal}`;
+
+			await this.bridge.eventSync.insert(room, eventId, id);
+			p.sentEventIds.push(id);
 		}
 	}
 
@@ -369,21 +446,36 @@ export class Steam {
 				puppetId: room.puppetId,
 				roomId: room.roomId,
 				isDirect: true,
-				topic: persona.player_name
+				name: persona.player_name
 			};
 		} else {
-			await this.bridge.sendStatusMessage(room.puppetId, `Creating group room chats is currently not supported`);
-			return null;
+			let [groupId, chatId] = this.parseChatRoomId(room.roomId);
+			let chatRoom = p.knownChats.get(chatId);
+			if (chatRoom) {
+				return {
+					puppetId: room.puppetId,
+					roomId: `chat_${chatRoom.chat_group_id}_${chatRoom.chat_id}`,
+					isDirect: false,
+					groupId: chatRoom.chat_group_id,
+					name: chatRoom.chat_name,
+				};
+			}
 		}
+
+		await this.bridge.sendStatusMessage(room.puppetId, `Invalid room id or unknown chat: ${room.roomId}`);
+		return null;
 	}
 
-	// public async getUserIdsInRoom(room: IRemoteRoom): Promise<Set<string> | null> {
-	// 	const p = this.puppets[room.puppetId];
-	// 	const client: TalkClient = p.client;
-	// 	const participants = await client.getChat(room.roomId).get_participants();
-	// 	for (const participant of participants) {
-	// 		p.knownUserNames[participant.userId] = participant.displayName;
-	// 	}
-	// 	return new Set(participants.map((participant) => participant.userId));
-	// }
+	public async createGroup(room: IRemoteGroup): Promise<IRemoteGroup | null> {
+		const p = this.puppets[room.puppetId];
+		if (!p) {
+			return null;
+		}
+
+		return {
+			puppetId: room.puppetId,
+			groupId: room.groupId,
+			shortDescription: p.knownGroupNames.get(room.groupId),
+		}
+	}
 }

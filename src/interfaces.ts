@@ -11,23 +11,31 @@ export interface IIncomingFriendMessage {
 	ordinal: number,
 	local_echo: boolean,
 	low_priority: boolean
-	message_bbcode_parsed: BBCodeNode[]
+	message_bbcode_parsed: BBCodeField[]
+}
+
+export type BBCodeField = BBCodeNode | string;
+
+export function isBBCode(field: BBCodeField): field is BBCodeNode {
+	return field['tag'] !== undefined;
 }
 
 export interface BBCodeNode {
 	tag: string
 	attrs: { [attr: string]: string },
-	content: BBCodeNode[]
+	content: BBCodeField[]
 }
 
 export interface IIncomingChatMessage {
 	chat_group_id: string,
 	chat_id: string,
+	chat_name: string,
 	steamid_sender: SteamId,
-	chat_entry_type: EChatEntryType,
-	from_limited_account: boolean,
+	chat_entry_type?: EChatEntryType,
+	from_limited_account?: boolean,
 	message: string,
 	message_no_bbcode: string,
+	message_bbcode_parsed: BBCodeField[]
 	server_timestamp: Date,
 	ordinal: number,
 	mentions: IChatMentions | null,
@@ -81,4 +89,13 @@ export interface AppInfo {
 			listofdlc: string
 		}
 	}
+}
+
+export interface IGroupInfo {
+	chat_group_id: string,
+	default_chat_id: string,
+	chat_rooms: {
+		chat_id: string,
+		chat_name: string,
+	}[]
 }
