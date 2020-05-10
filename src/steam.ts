@@ -475,7 +475,7 @@ export class Steam {
 		return {
 			puppetId: room.puppetId,
 			groupId: room.groupId,
-			shortDescription: p.knownGroupNames.get(room.groupId),
+			name: p.knownGroupNames.get(room.groupId),
 		}
 	}
 }
