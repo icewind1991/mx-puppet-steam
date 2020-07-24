@@ -159,6 +159,7 @@ export class Steam {
 				accountName: data.accountName,
 				loginKey: data.loginKey,
 				rememberPassword: true,
+				logonID: puppetId,
 			});
 
 			client.on("user", async (steamId, persona: IPersona) => {
