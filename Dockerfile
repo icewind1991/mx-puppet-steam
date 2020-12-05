@@ -1,13 +1,27 @@
-FROM node:latest AS builder
+FROM node:alpine AS builder
 
 WORKDIR /opt/mx-puppet-steam
 
+RUN apk add --no-cache \
+        python \
+        g++ \
+        build-base \
+        cairo-dev \
+        jpeg-dev \
+        pango-dev \
+        musl-dev \
+        giflib-dev \
+        pixman-dev \
+        pangomm-dev \
+        libjpeg-turbo-dev \
+        freetype-dev
+
 # run build process as user in case of npm pre hooks
 # pre hooks are not executed while running as root
-RUN chown node:node /opt/mx-puppet-steam
-USER node
 
 COPY package.json package-lock.json ./
+RUN chown -R node:node /opt/mx-puppet-steam
+USER node
 RUN npm install
 
 COPY tsconfig.json ./
@@ -23,7 +37,7 @@ ENV CONFIG_PATH=/data/config.yaml \
     REGISTRATION_PATH=/data/steam-registration.yaml
 
 # su-exec is used by docker-run.sh to drop privileges
-RUN apk add --no-cache su-exec
+RUN apk add --no-cache su-exec pixman cairo pango giflib libjpeg
 
 WORKDIR /opt/mx-puppet-steam
 COPY docker-run.sh ./
