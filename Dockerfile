@@ -28,6 +28,7 @@ COPY tsconfig.json ./
 COPY src/ ./src/
 RUN npm run build
 
+RUN rm -r node_modules/typescript
 
 FROM node:alpine
 
