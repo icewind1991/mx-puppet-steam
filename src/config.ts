@@ -1,5 +1,5 @@
-export class NextcloudConfigWrap {
-	public nextcloud: NextcloudConfig = new NextcloudConfig();
+export class SteamConfigWrap {
+	public steam: SteamConfig = new SteamConfig();
 
 	public applyConfig(newConfig: { [key: string]: any }, configLayer: { [key: string]: any } = this) {
 		Object.keys(newConfig).forEach((key) => {
@@ -12,5 +12,5 @@ export class NextcloudConfigWrap {
 	}
 }
 
-class NextcloudConfig {
+class SteamConfig {
 }

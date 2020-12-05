@@ -8,13 +8,13 @@ import {
 import * as commandLineArgs from "command-line-args";
 import * as commandLineUsage from "command-line-usage";
 import {Steam} from "./steam";
-import {NextcloudConfigWrap} from "./config";
+import {SteamConfigWrap} from "./config";
 import * as fs from "fs";
 import * as yaml from "js-yaml";
 import {LoginDetails, LoginToken} from "./login";
 import * as SteamUser from "steam-user";
 
-const log = new Log("NextcloudPuppet:index");
+const log = new Log("SteamPuppet:index");
 
 const commandOptions = [
 	{name: "register", alias: "r", type: Boolean},
@@ -69,14 +69,14 @@ if (options.register) {
 	process.exit(0);
 }
 
-let config: NextcloudConfigWrap = new NextcloudConfigWrap();
+let config: SteamConfigWrap = new SteamConfigWrap();
 
 function readConfig() {
-	config = new NextcloudConfigWrap();
+	config = new SteamConfigWrap();
 	config.applyConfig(yaml.safeLoad(fs.readFileSync(options.config)));
 }
 
-export function Config(): NextcloudConfigWrap {
+export function Config(): SteamConfigWrap {
 	return config;
 }
 

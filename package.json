@@ -1,7 +1,7 @@
 {
-  "name": "mx-puppet-nextcloud",
+  "name": "mx-puppet-steam",
   "version": "0.0.0",
-  "description": "Puppeting bridge for nextcloud talk",
+  "description": "Puppeting bridge for steam chat",
   "main": "index.js",
   "scripts": {
     "build": "tsc",
