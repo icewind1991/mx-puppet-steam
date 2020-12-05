@@ -1,9 +1,12 @@
 import {
+	MatrixPresence,
 	IFileEvent,
 	IMessageEvent,
 	IReceiveParams,
 	IRemoteRoom,
+	IRemoteGroup,
 	IRemoteUser,
+	IRetList,
 	Log,
 	PuppetBridge,
 	Util,
@@ -12,18 +15,14 @@ import * as SteamUser from "steam-user";
 import * as SteamCommunity from "steamcommunity";
 import * as SteamID from "steamid";
 import {EPersonaState} from "./enum";
-import {MatrixPresence} from "mx-puppet-bridge/lib/src/presencehandler";
 import {
 	AppInfo,
 	IGroupDetails,
-	IGroupInfo,
 	IIncomingChatMessage,
 	IIncomingFriendMessage,
 	IPersona,
 	isBBCode
 } from "./interfaces";
-import {IRetList} from "mx-puppet-bridge/src/interfaces";
-import {IRemoteGroup} from "mx-puppet-bridge/lib/src";
 
 const log = new Log("MatrixPuppet:Steam");
 
