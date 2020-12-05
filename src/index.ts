@@ -88,6 +88,9 @@ async function run() {
 	puppet.on("puppetDelete", steam.deletePuppet.bind(steam));
 	puppet.on("message", steam.handleMatrixMessage.bind(steam));
 	puppet.on("image", steam.handleMatrixImage.bind(steam));
+	puppet.on("typing", steam.handleMatrixTyping.bind(steam));
+	puppet.on("read", steam.handleMatrixRead.bind(steam));
+	puppet.on("presence", steam.handleMatrixPresence.bind(steam));
 	puppet.setCreateUserHook(steam.createUser.bind(steam));
 	puppet.setListUsersHook(steam.listUsers.bind(steam));
 	puppet.setGetDmRoomIdHook(steam.getDmRoomId.bind(steam));

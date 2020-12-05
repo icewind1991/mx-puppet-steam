@@ -9,7 +9,7 @@ import {
 	IRetList,
 	Log,
 	PuppetBridge,
-	Util,
+	Util, ISendingUser, IPresenceEvent,
 } from "mx-puppet-bridge";
 import * as SteamUser from "steam-user";
 import * as SteamCommunity from "steamcommunity";
@@ -494,5 +494,35 @@ export class Steam {
 			name: chat_room_group.group_summary.chat_group_name,
 			avatarUrl: chat_room_group.group_summary.chat_group_avatar_url,
 		};
+	}
+
+	public handleMatrixTyping(room: IRemoteRoom, typing: boolean) {
+		const p = this.puppets[room.puppetId];
+		let steamId = this.getRoomSteamId(room);
+		if (steamId && typing) {
+			p.client.chat.sendFriendTyping(steamId);
+		}
+	}
+
+	public handleMatrixRead(room: IRemoteRoom, eventId: string) {
+		const p = this.puppets[room.puppetId];
+		let steamId = this.getRoomSteamId(room);
+		if (steamId) {
+			p.client.chat.ackFriendMessage(steamId, new Date());
+		} else {
+			let [groupId, chatId] = this.parseChatRoomId(room.roomId);
+			p.client.chat.ackChatMessage(groupId, chatId, new Date());
+		}
+	}
+
+	public handleMatrixPresence(puppetId, presence: IPresenceEvent) {
+		const p = this.puppets[puppetId];
+		if (presence.presence === "offline") {
+			p.client.setPersona(EPersonaState.Offline);
+		} else if (presence.presence === "online") {
+			p.client.setPersona(EPersonaState.Online);
+		} else if (presence.presence === "unavailable") {
+			p.client.setPersona(EPersonaState.Away);
+		}
 	}
 }

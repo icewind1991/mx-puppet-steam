@@ -26,3 +26,14 @@ link <username> <password>
 ```
 
 If a steam guard (mobile or email) code is required, you will be asked for the code.
+
+## Ephemeral events
+
+To enable bridging ephemeral events from matrix to steam (typing notification, read markers and presence)
+you'll need to enable the experimental support in synapse for pushing these events to the bridge by setting
+
+```yaml
+"de.sorunome.msc2409.push_ephemeral": true
+```
+
+in your registration file.
