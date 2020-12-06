@@ -64,6 +64,7 @@ export class Steam {
 		} else if (p.client.users[steamIdString]) {
 			return p.client.users[steamIdString];
 		} else {
+			log.info(`Getting persona for ${steamid}`);
 			let {personas} = await p.client.getPersonas([steamid]);
 			let persona = personas[steamIdString];
 			p.knownPersonas.set(steamIdString, persona);
@@ -76,8 +77,10 @@ export class Steam {
 		if (app) {
 			return app;
 		} else {
+			log.info(`Getting product info for ${appId}`);
 			let {apps} = await p.client.getProductInfo([parseInt(appId, 10)], []);
-			let app = apps[appId];
+			let app: AppInfo = apps[appId];
+			log.info(`Got product info for ${appId}: ${app.appinfo.common.name}`);
 			p.knownApps.set(appId, app);
 			return app;
 		}
@@ -182,22 +185,26 @@ export class Steam {
 
 				if (steamId.toString() != client.steamID.toString()) {
 
-					await this.bridge.setUserPresence({
-						puppetId,
-						userId: steamId.toString()
-					}, state);
+					try {
+						await this.bridge.setUserPresence({
+							puppetId,
+							userId: steamId.toString()
+						}, state);
 
-					if (persona.gameid && persona.gameid !== '0') {
-						let app = await this.getProduct(p, persona.gameid);
-						await this.bridge.setUserStatus({
-							puppetId,
-							userId: steamId.toString()
-						}, `Now playing: ${app.appinfo.common.name}`);
-					} else {
-						await this.bridge.setUserStatus({
-							puppetId,
-							userId: steamId.toString()
-						}, "");
+						if (persona.gameid && persona.gameid !== '0') {
+							let app = await this.getProduct(p, persona.gameid);
+							await this.bridge.setUserStatus({
+								puppetId,
+								userId: steamId.toString()
+							}, `Now playing: ${app.appinfo.common.name}`);
+						} else {
+							await this.bridge.setUserStatus({
+								puppetId,
+								userId: steamId.toString()
+							}, "");
+						}
+					} catch (e) {
+						log.error(`Error while setting user presence ${e}`)
 					}
 				}
 			});
@@ -330,20 +337,25 @@ export class Steam {
 		msg: string,
 		mediaId?: string,
 	) {
-		if (this.getRoomSteamId(room)) {
-			const sendMessage = await p.client.chat.sendFriendMessage(room.roomId, msg);
-			let id = `${sendMessage.server_timestamp.toISOString()}::${sendMessage.ordinal}`;
+		try {
+			log.info(`Sending chat message to ${room.roomId}`);
+			if (this.getRoomSteamId(room)) {
+				const sendMessage = await p.client.chat.sendFriendMessage(room.roomId, msg);
+				let id = `${sendMessage.server_timestamp.toISOString()}::${sendMessage.ordinal}`;
 
-			await this.bridge.eventSync.insert(room, eventId, id);
-			p.sentEventIds.push(id);
-		} else {
-			let [groupId, chatId] = this.parseChatRoomId(room.roomId);
+				await this.bridge.eventSync.insert(room, eventId, id);
+				p.sentEventIds.push(id);
+			} else {
+				let [groupId, chatId] = this.parseChatRoomId(room.roomId);
 
-			const sendMessage = await p.client.chat.sendChatMessage(groupId, chatId, msg);
-			let id = `${sendMessage.server_timestamp.toISOString()}::${sendMessage.ordinal}`;
+				const sendMessage = await p.client.chat.sendChatMessage(groupId, chatId, msg);
+				let id = `${sendMessage.server_timestamp.toISOString()}::${sendMessage.ordinal}`;
 
-			await this.bridge.eventSync.insert(room, eventId, id);
-			p.sentEventIds.push(id);
+				await this.bridge.eventSync.insert(room, eventId, id);
+				p.sentEventIds.push(id);
+			}
+		} catch (e) {
+			log.error(`Error while sending message ${e}`);
 		}
 	}
 
@@ -367,16 +379,20 @@ export class Steam {
 		let steamId = this.getRoomSteamId(room);
 		if (steamId) {
 			const buffer = await Util.DownloadFile(data.url);
-			let sendUrl: string = await new Promise((resolve, reject) => p.community.sendImageToUser(steamId, buffer, (err, imageUrl) => {
-				if (err) {
-					reject(err);
-				} else {
-					resolve(imageUrl);
-				}
-			}));
-			// since we send images trough SteamCommunity and not SteamUser we get them back as `friendMessageEcho`
-			// so we need to track them to make sure we dont double post them
-			p.ourSendImages.push(sendUrl);
+			try {
+				let sendUrl: string = await new Promise((resolve, reject) => p.community.sendImageToUser(steamId, buffer, (err, imageUrl) => {
+					if (err) {
+						reject(err);
+					} else {
+						resolve(imageUrl);
+					}
+				}));
+				// since we send images trough SteamCommunity and not SteamUser we get them back as `friendMessageEcho`
+				// so we need to track them to make sure we dont double post them
+				p.ourSendImages.push(sendUrl);
+			} catch (e) {
+				log.error(`Error while sending image ${e}`);
+			}
 		} else {
 			await this.bridge.sendStatusMessage(room.puppetId, `Sending images to groups is currently not supported`);
 		}
@@ -460,6 +476,7 @@ export class Steam {
 	}
 
 	public async getGroupInfo(puppet: ISteamPuppet, groupId: string): Promise<IGroupDetails | null> {
+		log.info(`Getting group info for ${groupId}`);
 		let {chat_room_groups} = await new Promise((resolve, reject) => puppet.client.chat.getGroups((err, response) => {
 			if (err) {
 				reject(err);
@@ -500,29 +517,31 @@ export class Steam {
 		const p = this.puppets[room.puppetId];
 		let steamId = this.getRoomSteamId(room);
 		if (steamId && typing) {
-			p.client.chat.sendFriendTyping(steamId);
+			log.info(`sending typing notification to ${steamId}`);
+			p.client.chat.sendFriendTyping(steamId).catch(e => log.error(`Error while sending typing notification ${e}`));
 		}
 	}
 
 	public handleMatrixRead(room: IRemoteRoom, eventId: string) {
 		const p = this.puppets[room.puppetId];
+		log.info(`sending read marker for ${room.roomId}`);
 		let steamId = this.getRoomSteamId(room);
 		if (steamId) {
-			p.client.chat.ackFriendMessage(steamId, new Date());
+			p.client.chat.ackFriendMessage(steamId, new Date()).catch(() => {});
 		} else {
 			let [groupId, chatId] = this.parseChatRoomId(room.roomId);
-			p.client.chat.ackChatMessage(groupId, chatId, new Date());
+			p.client.chat.ackChatMessage(groupId, chatId, new Date()).catch(e => log.error(`Error while sending read marker ${e}`));
 		}
 	}
 
 	public handleMatrixPresence(puppetId, presence: IPresenceEvent) {
 		const p = this.puppets[puppetId];
 		if (presence.presence === "offline") {
-			p.client.setPersona(EPersonaState.Offline);
+			p.client.setPersona(EPersonaState.Offline).catch(e => log.error(`Error while sending presence ${e}`));
 		} else if (presence.presence === "online") {
-			p.client.setPersona(EPersonaState.Online);
+			p.client.setPersona(EPersonaState.Online).catch(e => log.error(`Error while sending presence ${e}`));
 		} else if (presence.presence === "unavailable") {
-			p.client.setPersona(EPersonaState.Away);
+			p.client.setPersona(EPersonaState.Away).catch(e => log.error(`Error while sending presence ${e}`));
 		}
 	}
 }
