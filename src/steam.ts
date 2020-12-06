@@ -518,7 +518,7 @@ export class Steam {
 		let steamId = this.getRoomSteamId(room);
 		if (steamId && typing) {
 			log.info(`sending typing notification to ${steamId}`);
-			p.client.chat.sendFriendTyping(steamId).catch(e => log.error(`Error while sending typing notification ${e}`));
+			p.client.chat.sendFriendTyping(steamId);
 		}
 	}
 
@@ -527,21 +527,21 @@ export class Steam {
 		log.info(`sending read marker for ${room.roomId}`);
 		let steamId = this.getRoomSteamId(room);
 		if (steamId) {
-			p.client.chat.ackFriendMessage(steamId, new Date()).catch(() => {});
+			p.client.chat.ackFriendMessage(steamId, new Date());
 		} else {
 			let [groupId, chatId] = this.parseChatRoomId(room.roomId);
-			p.client.chat.ackChatMessage(groupId, chatId, new Date()).catch(e => log.error(`Error while sending read marker ${e}`));
+			p.client.chat.ackChatMessage(groupId, chatId, new Date());
 		}
 	}
 
 	public handleMatrixPresence(puppetId, presence: IPresenceEvent) {
 		const p = this.puppets[puppetId];
 		if (presence.presence === "offline") {
-			p.client.setPersona(EPersonaState.Offline).catch(e => log.error(`Error while sending presence ${e}`));
+			p.client.setPersona(EPersonaState.Offline);
 		} else if (presence.presence === "online") {
-			p.client.setPersona(EPersonaState.Online).catch(e => log.error(`Error while sending presence ${e}`));
+			p.client.setPersona(EPersonaState.Online);
 		} else if (presence.presence === "unavailable") {
-			p.client.setPersona(EPersonaState.Away).catch(e => log.error(`Error while sending presence ${e}`));
+			p.client.setPersona(EPersonaState.Away);
 		}
 	}
 }
