@@ -392,6 +392,7 @@ export class Steam {
 				p.ourSendImages.push(sendUrl);
 			} catch (e) {
 				log.error(`Error while sending image ${e}`);
+				await this.bridge.sendStatusMessage(room.puppetId, `Error while sending image ${e}`);
 			}
 		} else {
 			await this.bridge.sendStatusMessage(room.puppetId, `Sending images to groups is currently not supported`);
