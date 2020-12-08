@@ -356,6 +356,7 @@ export class Steam {
 			}
 		} catch (e) {
 			log.error(`Error while sending message ${e}`);
+			await this.bridge.sendStatusMessage(room.puppetId, `Error while sending message ${e}`);
 		}
 	}
 
