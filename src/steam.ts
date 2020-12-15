@@ -23,6 +23,7 @@ import {
 	IPersona,
 	isBBCode
 } from "./interfaces";
+import { debounce } from 'ts-debounce';
 
 const log = new Log("MatrixPuppet:Steam");
 
@@ -239,6 +240,10 @@ export class Steam {
 			client.chat.on("chatMessage", (message) => {
 				this.handleChatMessage(puppetId, message);
 			});
+			community.on("sessionExpired", debounce(() => {
+				log.info(`steamcommunity session expired`);
+				client.webLogOn();
+			}, 60 * 1000));
 
 			client.on("error", (err) => {
 				log.error(`Failed to start up puppet ${puppetId}`, err);
