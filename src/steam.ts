@@ -193,19 +193,6 @@ export class Steam {
 							puppetId,
 							userId: steamId.toString()
 						}, state);
-
-						if (persona.gameid && persona.gameid !== '0') {
-							let app = await this.getProduct(p, persona.gameid);
-							await this.bridge.setUserStatus({
-								puppetId,
-								userId: steamId.toString()
-							}, `Now playing: ${app.appinfo.common.name}`);
-						} else {
-							await this.bridge.setUserStatus({
-								puppetId,
-								userId: steamId.toString()
-							}, "");
-						}
 					} catch (e) {
 						log.error(`Error while setting user presence ${e}`);
 					}
