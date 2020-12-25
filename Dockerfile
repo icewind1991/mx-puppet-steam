@@ -22,7 +22,7 @@ RUN apk add --no-cache \
 COPY package.json package-lock.json ./
 RUN chown -R node:node /opt/mx-puppet-steam
 USER node
-RUN npm install
+RUN npm ci
 
 COPY tsconfig.json ./
 COPY src/ ./src/
