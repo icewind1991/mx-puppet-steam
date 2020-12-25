@@ -23,7 +23,7 @@ import {
 	IPersona,
 	isBBCode
 } from "./interfaces";
-import { debounce } from 'ts-debounce';
+import {debounce} from 'ts-debounce';
 
 const log = new Log("MatrixPuppet:Steam");
 
@@ -35,6 +35,7 @@ interface ISteamPuppet {
 	knownPersonas: Map<string, IPersona>,
 	knownApps: Map<string, AppInfo>,
 	ourSendImages: string[],
+	webSessionListeners: (() => void)[],
 }
 
 interface ISteamPuppets {
@@ -156,6 +157,7 @@ export class Steam {
 			knownPersonas: new Map(),
 			knownApps: new Map(),
 			ourSendImages: [],
+			webSessionListeners: [],
 		} as ISteamPuppet;
 		try {
 			client.logOn({
@@ -205,7 +207,7 @@ export class Steam {
 							}, "");
 						}
 					} catch (e) {
-						log.error(`Error while setting user presence ${e}`)
+						log.error(`Error while setting user presence ${e}`);
 					}
 				}
 			});
@@ -219,7 +221,16 @@ export class Steam {
 			});
 
 			client.on("webSession", async (sessionId, cookies) => {
+				log.info("get new webSession");
 				community.setCookies(cookies);
+
+				const p = this.puppets[puppetId];
+				let listeners = p.webSessionListeners;
+				p.webSessionListeners = [];
+
+				for (let listener of listeners) {
+					listener();
+				}
 			});
 
 			client.on("loginKey", (loginKey) => {
@@ -241,7 +252,7 @@ export class Steam {
 				this.handleChatMessage(puppetId, message);
 			});
 			community.on("sessionExpired", debounce(() => {
-				log.info(`steamcommunity session expired`);
+				log.warn(`steamcommunity session expired`);
 				client.webLogOn();
 			}, 60 * 1000));
 
@@ -384,7 +395,18 @@ export class Steam {
 
 		let steamId = this.getRoomSteamId(room);
 		if (steamId) {
-			const buffer = await Util.DownloadFile(data.url);
+			const bufferPromise = Util.DownloadFile(data.url);;
+
+			await new Promise((resolve, _reject) => {
+				p.client.webLogOn();
+				p.webSessionListeners.push(() => resolve);
+
+				setTimeout(resolve, 2000);
+			});
+
+			log.info("webLogOn done");
+
+			const buffer = await bufferPromise;
 			try {
 				let sendUrl: string = await new Promise((resolve, reject) => p.community.sendImageToUser(steamId, buffer, (err, imageUrl) => {
 					if (err) {
