@@ -16,10 +16,6 @@ export interface IIncomingFriendMessage {
 
 export type BBCodeField = BBCodeNode | string;
 
-export function isBBCode(field: BBCodeField): field is BBCodeNode {
-	return field['tag'] !== undefined;
-}
-
 export interface BBCodeNode {
 	tag: string
 	attrs: { [attr: string]: string },

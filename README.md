@@ -7,7 +7,7 @@ Matrix <-> Steam puppeting bridge based on [mx-puppet-bridge](https://github.com
 - [x] login with steam guard support
 - [x] 1<->1 messaging
 - [x] group messaging
-- [x] steam -> matrix typing notifications
+- [x] steam <-> matrix typing notifications
 - [x] online/offline status
 - [x] retrieve nickname and avatar from steam
 - [x] listing of steam users
@@ -16,6 +16,7 @@ Matrix <-> Steam puppeting bridge based on [mx-puppet-bridge](https://github.com
 - [x] bridging embedded images in 1<->1 chats
 - [x] receiving embedded images from steam in group chats
 - [ ] sending embedded images to steam in group chats
+- [x] steam -> matrix emotes 
 
 ## Linking
 

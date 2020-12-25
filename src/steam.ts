@@ -20,10 +20,10 @@ import {
 	IGroupDetails,
 	IIncomingChatMessage,
 	IIncomingFriendMessage,
-	IPersona,
-	isBBCode
+	IPersona
 } from "./interfaces";
 import {debounce} from 'ts-debounce';
+import {exportMessageForSending} from "./message";
 
 const log = new Log("MatrixPuppet:Steam");
 
@@ -284,7 +284,7 @@ export class Steam {
 
 		let sendParams = await this.getFriendMessageSendParams(puppetId, message, fromSteamId);
 
-		await this.sendMessage(p, sendParams, message);
+		await this.sendMessage(p, puppetId, sendParams, message);
 	}
 
 	public async handleChatMessage(puppetId: number, message: IIncomingChatMessage, fromSteamId?: SteamID) {
@@ -293,30 +293,28 @@ export class Steam {
 
 		let sendParams = await this.getChatMessageSendParams(puppetId, message, fromSteamId);
 
-		await this.sendMessage(p, sendParams, message);
+		await this.sendMessage(p, puppetId, sendParams, message);
 	}
 
-	public async sendMessage(puppet: ISteamPuppet, sendParams: IReceiveParams, message: IIncomingFriendMessage | IIncomingChatMessage) {
-		// message is only an embedded image
-		if (
-			message.message_bbcode_parsed
-			&& message.message_bbcode_parsed.length === 1
-			&& isBBCode(message.message_bbcode_parsed[0])
-			&& message.message_bbcode_parsed[0].tag === 'img'
-			&& message.message_no_bbcode === message.message_bbcode_parsed[0].attrs['src']
-		) {
-			const url = message.message_bbcode_parsed[0].attrs['src'];
-			let i = puppet.ourSendImages.indexOf(url);
-			if (i === -1) {
-				await this.bridge.sendImage(sendParams, url);
-			} else {
-				// image came from us, dont send
-				puppet.ourSendImages.splice(i);
+	public async sendMessage(puppet: ISteamPuppet, puppetId: number, sendParams: IReceiveParams, incoming: IIncomingFriendMessage | IIncomingChatMessage) {
+		const parts = await exportMessageForSending(this, puppetId, incoming);
+
+		for (let part of parts) {
+			if (part.kind === "image") {
+				const imageUrl = part.urlOrBuffer;
+				let i = (typeof imageUrl === "string") ? puppet.ourSendImages.indexOf(imageUrl) : -1;
+				if (i === -1) {
+					await this.bridge.sendImage(sendParams, imageUrl);
+				} else {
+					// image came from us, dont send
+					puppet.ourSendImages.splice(i);
+				}
+			} else if (part.kind === "text") {
+				await this.bridge.sendMessage(sendParams, {
+					body: part.body,
+					formattedBody: part.formattedBody,
+				});
 			}
-		} else {
-			await this.bridge.sendMessage(sendParams, {
-				body: message.message_no_bbcode,
-			});
 		}
 	}
 
@@ -382,7 +380,8 @@ export class Steam {
 
 		let steamId = this.getRoomSteamId(room);
 		if (steamId) {
-			const bufferPromise = Util.DownloadFile(data.url);;
+			const bufferPromise = Util.DownloadFile(data.url);
+			;
 
 			await new Promise((resolve, _reject) => {
 				p.client.webLogOn();
@@ -559,5 +558,27 @@ export class Steam {
 		} else if (presence.presence === "unavailable") {
 			p.client.setPersona(EPersonaState.Away);
 		}
+	}
+
+	public async getEmojiMxc(puppetId: number, type: 'sticker' | 'emoticonlarge', name: string): Promise<string | null> {
+		const id = `${type}/${name}`;
+		const emoji = await this.bridge.emoteSync.get({
+			puppetId,
+			emoteId: id,
+		});
+		if (emoji && emoji.avatarMxc) {
+			return emoji.avatarMxc;
+		}
+		const {emote} = await this.bridge.emoteSync.set({
+			puppetId,
+			emoteId: id,
+			avatarUrl: `https://community.cloudflare.steamstatic.com/economy/${type}/${encodeURIComponent(name)}`,
+			name,
+			data: {
+				type,
+				name,
+			},
+		});
+		return emote.avatarMxc || null;
 	}
 }

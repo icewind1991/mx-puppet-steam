@@ -28,7 +28,7 @@ export interface LoginToken {
 	steamID: SteamID
 }
 
-// export async function login(details: LoginDetails, steamGuard?: () => Promise<string>, twoFactor?: () => Promise<string>, captcha?: (url: string) => Promise<string>): Promise<LoginToken> {
+// export async function login(details: LoginDetails, steamGuard?: () => Promise<string>, twoFactor?: () => Promise<string>, captcha?: (urlOrBuffer: string) => Promise<string>): Promise<LoginToken> {
 // 	let community = new SteamCommunity();
 // 	while (true) {
 // 		try {
