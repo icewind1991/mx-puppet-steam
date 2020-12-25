@@ -74,7 +74,8 @@ export class Steam {
 		}
 	}
 
-	async getProduct(p: ISteamPuppet, appId: string): Promise<AppInfo> {
+	public async getProduct(puppetId: number, appId: string): Promise<AppInfo> {
+		const p = this.puppets[puppetId];
 		let app = p.knownApps.get(appId);
 		if (app) {
 			return app;
@@ -138,6 +139,10 @@ export class Steam {
 		} else {
 			throw new Error("invalid chatroom id");
 		}
+	}
+
+	public getSteamId(puppetId: number): SteamID | null {
+		return this.puppets[puppetId].client.steamID;
 	}
 
 	public async newPuppet(puppetId: number, data: IPuppetParams) {
@@ -291,12 +296,17 @@ export class Steam {
 		const p = this.puppets[puppetId];
 		log.verbose("Got chat message from steam to pass on");
 
-		let sendParams = await this.getChatMessageSendParams(puppetId, message, fromSteamId);
+		let sendParams = await this.getChatMessageSendParams(puppetId, message);
 
 		await this.sendMessage(p, puppetId, sendParams, message);
 	}
 
-	public async sendMessage(puppet: ISteamPuppet, puppetId: number, sendParams: IReceiveParams, incoming: IIncomingFriendMessage | IIncomingChatMessage) {
+	public async sendMessage(
+		puppet: ISteamPuppet,
+		puppetId: number,
+		sendParams: IReceiveParams,
+		incoming: IIncomingFriendMessage | IIncomingChatMessage
+	) {
 		const parts = await exportMessageForSending(this, puppetId, incoming);
 
 		for (let part of parts) {

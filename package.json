@@ -17,6 +17,7 @@
     "gif-encoder": "^0.7.2",
     "js-yaml": "^3.14.0",
     "mx-puppet-bridge": "0.1.0-1",
+    "node-steam-user": "0.0.3",
     "steam-user": "icewind1991/node-steam-user#bbcode-sticker",
     "steamcommunity": "3.42.0",
     "steamid": "1.1.3",

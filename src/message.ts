@@ -5,6 +5,7 @@ import UPNG from "@pdf-lib/upng";
 const GIFEncoder = require("gif-encoder");
 import {WritableStreamBuffer} from 'stream-buffers';
 import {Util} from "mx-puppet-bridge";
+import * as SteamID from "steamid";
 
 function isBBCode(field: BBCodeField): field is BBCodeNode {
 	return field['tag'] !== undefined;
@@ -45,8 +46,7 @@ async function apngToGif(sourceUrl: string): Promise<Buffer> {
 	return output.getContents();
 }
 
-
-async function formatBBCode(steam: Steam, puppetId: number, node: BBCodeNode): Promise<ImageMessage | TextMessage> {
+async function formatBBCode(steam: Steam, puppetId: number, node: BBCodeNode, fromSteamId?: SteamID): Promise<ImageMessage | TextMessage> {
 	if (node.tag === 'img') {
 		return {
 			kind: "image",
@@ -69,22 +69,45 @@ async function formatBBCode(steam: Steam, puppetId: number, node: BBCodeNode): P
 			kind: "image",
 			urlOrBuffer: gif
 		};
+	} else if (node.tag === 'gameinvite') {
+		let game = await steam.getProduct(puppetId, node.attrs['appid']);
+
+		if (steam.getSteamId(puppetId) === fromSteamId) {
+			return {
+				kind: "text",
+				body: "",
+			};
+		}
+
+		return {
+			kind: "text",
+			body: `You were invited to play ${game.appinfo.common.name}`
+		};
 	} else {
 		return {kind: "text", body: `[${node.tag}]`};
 	}
 }
 
-export async function exportMessageForSending(steam: Steam, puppetId: number, message: IIncomingFriendMessage | IIncomingChatMessage): Promise<(TextMessage | ImageMessage)[]> {
+export async function exportMessageForSending(
+	steam: Steam,
+	puppetId: number,
+	message: IIncomingFriendMessage | IIncomingChatMessage,
+	fromSteamId?: SteamID
+): Promise<(TextMessage | ImageMessage)[]> {
 	if (message.message_bbcode_parsed) {
 		let parts = await Promise.all(message.message_bbcode_parsed.map(node => {
 			if (isBBCode(node)) {
-				return formatBBCode(steam, puppetId, node);
+				return formatBBCode(steam, puppetId, node, message['steamid_friend']);
 			} else {
 				return {kind: "text", body: node} as TextMessage;
 			}
 		}));
 
 		return parts.reduce((merged, part) => {
+			if (part.kind === "text" && part.body === "") {
+				return merged;
+			}
+
 			if (merged.length === 0) {
 				merged.push(part);
 			} else {
