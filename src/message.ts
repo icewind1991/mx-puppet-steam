@@ -5,7 +5,6 @@ import UPNG from "@pdf-lib/upng";
 const GIFEncoder = require("gif-encoder");
 import {WritableStreamBuffer} from 'stream-buffers';
 import {Util} from "mx-puppet-bridge";
-import * as SteamID from "steamid";
 
 function isBBCode(field: BBCodeField): field is BBCodeNode {
 	return field['tag'] !== undefined;
@@ -84,7 +83,7 @@ async function formatBBCode(steam: Steam, puppetId: number, node: BBCodeNode, me
 			body: `You were invited to play ${game.appinfo.common.name}`
 		};
 	} else {
-		return {kind: "text", body: `[${node.tag}]`};
+		return {kind: "text", body: message.message_no_bbcode};
 	}
 }
 
