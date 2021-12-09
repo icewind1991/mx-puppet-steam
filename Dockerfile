@@ -1,4 +1,4 @@
-FROM node:alpine AS builder
+FROM node:12-alpine AS builder
 
 WORKDIR /opt/mx-puppet-steam
 
@@ -30,7 +30,7 @@ RUN npm run build
 
 RUN rm -r node_modules/typescript
 
-FROM node:alpine
+FROM node:12-alpine
 
 VOLUME /data
 
