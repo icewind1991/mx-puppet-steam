@@ -3,7 +3,7 @@ FROM node:alpine AS builder
 WORKDIR /opt/mx-puppet-steam
 
 RUN apk add --no-cache \
-        python \
+        python3 \
         g++ \
         build-base \
         cairo-dev \
