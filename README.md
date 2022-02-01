@@ -86,5 +86,5 @@ in your registration file.
 
 This project would not be possible without the great work of (among others) the following projects:
 
-- [mx-puppet-steam](https://github.com/Sorunome/mx-puppet-bridge) by Sorunome
+- [mx-puppet-Bridge](https://github.com/Sorunome/mx-puppet-bridge) by Sorunome
 - [node-steam-user](https://github.com/DoctorMcKay/node-steam-user/) by DoctorMcKay 
