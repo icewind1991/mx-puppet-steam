@@ -1,9 +1,9 @@
-FROM node:alpine AS builder
+FROM node:14-alpine AS builder
 
 WORKDIR /opt/mx-puppet-steam
 
 RUN apk add --no-cache \
-        python \
+        python3 \
         g++ \
         build-base \
         cairo-dev \
@@ -30,7 +30,7 @@ RUN npm run build
 
 RUN rm -r node_modules/typescript
 
-FROM node:alpine
+FROM node:14-alpine
 
 VOLUME /data
 
