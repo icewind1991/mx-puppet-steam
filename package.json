@@ -16,9 +16,9 @@
     "command-line-usage": "^6.1.1",
     "gif-encoder": "^0.7.2",
     "js-yaml": "^4.0.0",
-    "mx-puppet-bridge": "0.1.4",
-    "steam-user": "^4.19.2",
-    "steamcommunity": "3.42.0",
+    "mx-puppet-bridge": "0.1.6",
+    "steam-user": "^4.28.0",
+    "steamcommunity": "3.44.3",
     "steamid": "1.1.3",
     "stream-buffers": "^3.0.2",
     "ts-debounce": "2.2.0"
@@ -26,7 +26,7 @@
   "devDependencies": {
     "@types/gif-encoder": "^0.7.0",
     "@types/node": "^14.14.22",
-    "@types/steamid": "^1.1.0",
+    "@types/steamid": "^2.0.0",
     "typescript": "^4.1.3"
   }
 }
