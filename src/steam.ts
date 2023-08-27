@@ -508,11 +508,11 @@ export class Steam {
 			} else {
 				resolve(response);
 			}
-		}));
+		})) as {chat_room_groups: {[id: string]: IGroupDetails | null}};
 
 		let chat_room_group = chat_room_groups[groupId];
 		if (chat_room_group) {
-			return chat_room_group as IGroupDetails;
+			return chat_room_group;
 		} else {
 			return null;
 		}
