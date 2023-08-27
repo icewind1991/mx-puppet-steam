@@ -4,3 +4,5 @@ build
 config.yaml
 *-registration.yaml
 database.db
+result
+.direnv
