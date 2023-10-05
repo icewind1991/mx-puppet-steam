@@ -1,0 +1,15 @@
+diff --git a/node_modules/@sorunome/matrix-bot-sdk/lib/appservice/Appservice.js b/node_modules/@sorunome/matrix-bot-sdk/lib/appservice/Appservice.js
+index f8c7d70..8c8c3b6 100644
+--- a/node_modules/@sorunome/matrix-bot-sdk/lib/appservice/Appservice.js
++++ b/node_modules/@sorunome/matrix-bot-sdk/lib/appservice/Appservice.js
+@@ -397,8 +397,8 @@ class Appservice extends events_1.EventEmitter {
+     }
+     isAuthed(req) {
+         let providedToken = req.query ? req.query["access_token"] : null;
+-        if (req.headers && req.headers["Authorization"]) {
+-            const authHeader = req.headers["Authorization"];
++        if (req.headers && req.headers["authorization"]) {
++            const authHeader = req.headers["authorization"];
+             if (!authHeader.startsWith("Bearer "))
+                 providedToken = null;
+             else

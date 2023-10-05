@@ -9,7 +9,7 @@
     nixpkgs,
     utils,
   }:
-  utils.lib.eachDefaultSystem (system: let
+    utils.lib.eachDefaultSystem (system: let
       overlays = [];
       pkgs = (import nixpkgs) {
         inherit system overlays;
@@ -18,7 +18,16 @@
     in rec {
       # `nix develop`
       devShell = pkgs.mkShell {
-        nativeBuildInputs = with pkgs; [nodejs.pkgs.node-pre-gyp nodejs.pkgs.node-gyp-build pkg-config which nodePackages.typescript python3];
+        nativeBuildInputs = with pkgs; [
+          nodejs
+          nodejs.pkgs.node-pre-gyp
+          nodejs.pkgs.node-gyp-build
+          pkg-config
+          which
+          nodePackages.typescript
+          python3
+          nodePackages.patch-package
+        ];
         buildInputs = with pkgs; [libjpeg pixman cairo pango postgresql];
       };
     });
