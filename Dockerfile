@@ -1,4 +1,4 @@
-FROM node:14-alpine AS builder
+FROM node:18-alpine AS builder
 
 WORKDIR /opt/mx-puppet-steam
 
@@ -20,6 +20,7 @@ RUN apk add --no-cache \
 # pre hooks are not executed while running as root
 
 COPY package.json package-lock.json ./
+COPY patches ./patches
 RUN chown -R node:node /opt/mx-puppet-steam
 USER node
 RUN npm ci
@@ -30,7 +31,7 @@ RUN npm run build
 
 RUN rm -r node_modules/typescript
 
-FROM node:14-alpine
+FROM node:18-alpine
 
 VOLUME /data
 

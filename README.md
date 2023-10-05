@@ -59,7 +59,7 @@ npm run start
 
 ### Docker
 
-If you prefer to use a docker based setup an image is available at [icewind1991/mx-puppet-steam](https://hub.docker.com/r/icewind1991/mx-puppet-steam).
+If you prefer to use a docker based setup an image is available at [icewind1991/mx-puppet-steam](https://hub.docker.com/r/icewind1991/mx-puppet-steam) (Note that I do longer use the docker image myself so it's mostly untested).
 
 ## Linking
 
