@@ -1,7 +1,7 @@
 {
   inputs = {
     utils.url = "github:numtide/flake-utils";
-    nixpkgs.url = "nixpkgs/release-23.05";
+    nixpkgs.url = "nixpkgs/release-25.05";
   };
 
   outputs = {
@@ -14,8 +14,8 @@
       pkgs = (import nixpkgs) {
         inherit system overlays;
       };
-      nodejs = pkgs.nodejs_18;
-    in rec {
+      nodejs = pkgs.nodejs_22;
+    in {
       # `nix develop`
       devShell = pkgs.mkShell {
         nativeBuildInputs = with pkgs; [
@@ -28,7 +28,14 @@
           python3
           nodePackages.patch-package
         ];
-        buildInputs = with pkgs; [libjpeg pixman cairo pango postgresql];
+        buildInputs = with pkgs; [
+          libjpeg
+          pixman
+          cairo
+          pango
+          postgresql
+          postgresql.pg_config
+        ];
       };
     });
 }
