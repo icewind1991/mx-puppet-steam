@@ -1,3 +1,5 @@
+# Moved to https://codeberg.org/icewind/mx-puppet-steam
+
 # mx-puppet-steam
 
 Matrix <-> Steam puppeting bridge based on [mx-puppet-bridge](https://github.com/Sorunome/mx-puppet-bridge).
